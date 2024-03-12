@@ -23,7 +23,8 @@ class _MapsPageState extends State<MapsPage> {
   MapController mapController = MapController(); // Create a MapController
   LatLng draggableMarkerPosition = LatLng(51.509364, -0.128928); // Position for the draggable marker
   FocusNode searchFocusNode = FocusNode(); // Define a FocusNode
-
+  double radius = 10.0; // Add this line
+  late double setRadius;
   @override
   void initState() {
     super.initState();
@@ -124,20 +125,17 @@ class _MapsPageState extends State<MapsPage> {
                   center: _center,
                   zoom: 5.2,
                   onTap: (TapPosition tapPosition, LatLng latlng) {
-                    // Update the draggable marker's position when the map is tapped
                     setState(() {
                       draggableMarkerPosition = latlng;
                       print("Draggable Marker Position: Latitude ${draggableMarkerPosition.latitude}, Longitude ${draggableMarkerPosition.longitude}");
                     });
                   },
                 ),
-
                 children: [
                   TileLayer(
                     urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.app',
                   ),
-                  // Add a MarkerLayer to display the draggable marker
                   MarkerLayer(
                     markers: [
                       Marker(
@@ -150,9 +148,41 @@ class _MapsPageState extends State<MapsPage> {
                       ),
                     ],
                   ),
+                  CircleLayer(
+                    circles: [
+                      CircleMarker(
+                        point: draggableMarkerPosition,
+                        radius: radius,
+                        color: Colors.blue.withOpacity(0.5),
+                        borderStrokeWidth: 2,
+                        borderColor: Colors.blue,
+                      ),
+                    ],
+                  ),
                 ],
               );
             },
+          ),
+          Positioned(
+            left: 250,
+            top: 250.0,
+            child: Transform.rotate(
+              angle: -90 * pi / 180, // Rotate 90 degrees counterclockwise
+              child: Slider(
+                value: radius,
+                min: 10.0,
+                max: 50.0,
+                divisions: 4,
+                label: ((radius - 10.0) / 40.0 * 4 + 1).round().toString(),
+                onChanged: (double newRadius) {
+                  setState(() {
+                    radius = newRadius;
+                    setRadius=radius*100;
+                    print(setRadius);
+                  });
+                },
+              ),
+            ),
           ),
           Positioned(
             top: 16.0,
@@ -163,44 +193,59 @@ class _MapsPageState extends State<MapsPage> {
               children: [
                 TextField(
                   controller: searchController,
-                  focusNode: searchFocusNode, // Use the FocusNode here
+                  focusNode: searchFocusNode,
                   onChanged: (value) {
                     autocompleteSearch(value);
                   },
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: 'Search for places...',
                     labelText: 'Search',
                     prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20.0), // Rounded corners
+                    ),
+                    fillColor: Colors.white, // White background
+                    filled: true, // Enable the fillColor
                   ),
                 ),
                 const SizedBox(height: 8.0),
-                SizedBox(
-                  height: 200.0,
-                  child: ListView.builder(
-                    itemCount: autocompleteResults.length,
-                    itemBuilder: (context, index) {
-                      var location = autocompleteResults[index];
-                      return ListTile(
-                        title: Text(location['display_name']),
-                        onTap: () {
-                          handleAutocompleteTap(
-                            double.parse(location['lat']),
-                            double.parse(location['lon']),
+                // Conditionally render the list container based on autocompleteResults and search text
+                if (autocompleteResults.isNotEmpty && searchController.text.isNotEmpty)
+                  Container(
+                    color: Colors.white, // Set the background color to white
+                    padding: EdgeInsets.all(8.0), // Add some padding around the list
+                    child: SizedBox(
+                      height: 200.0,
+                      child: ListView.builder(
+                        itemCount: autocompleteResults.length,
+                        itemBuilder: (context, index) {
+                          var location = autocompleteResults[index];
+                          return ListTile(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Add padding around each item
+                            leading: Icon(Icons.location_on, color: Colors.blue), // Add a leading icon
+                            title: Text(
+                              location['display_name'],
+                              style: TextStyle(fontSize: 16.0), // Customize the text style
+                            ),
+                            onTap: () {
+                              handleAutocompleteTap(
+                                double.parse(location['lat']),
+                                double.parse(location['lon']),
+                              );
+                              searchFocusNode.unfocus();
+                              setState(() {
+                                autocompleteResults.clear();
+                              });
+                            },
                           );
-                          searchFocusNode.unfocus(); // Dismiss the keyboard and the list
-                          setState(() {
-                            autocompleteResults.clear(); // Clear the list of search results
-                          });
                         },
-                      );
-
-                    },
+                      ),
+                    ),
                   ),
-                ),
               ],
             ),
           ),
+
           Positioned(
             bottom: 20,
             right: 20,
@@ -213,9 +258,7 @@ class _MapsPageState extends State<MapsPage> {
                     draggableMarkerPosition = LatLng(currentPosition.latitude, currentPosition.longitude);
                     locationMessage = 'Latitude ${currentPosition.latitude} Longitude ${currentPosition.longitude}';
                   });
-                  // Use the MapController to move the map back to the current location
                   mapController.move(LatLng(currentPosition.latitude, currentPosition.longitude), 15.0);
-                  // Call liveLocation to start listening for location updates
                   liveLocation();
                 } catch (e) {
                   print('Error getting current location: $e');
@@ -223,11 +266,11 @@ class _MapsPageState extends State<MapsPage> {
               },
               child: Icon(Icons.gps_fixed),
             ),
-          )
-
+          ),
         ],
       ),
     );
   }
+
 
 }
