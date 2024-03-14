@@ -41,6 +41,7 @@ dependencies:
   top_modal_sheet: ^2.1.0
   geolocator: ^8.2.1
   syncfusion_flutter_maps: ^24.2.9
+  font_awesome_flutter: ^10.7.0
 
 dev_dependencies:
   flutter_test:
